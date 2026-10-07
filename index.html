@@ -167,10 +167,41 @@ body.searching .card .num::before{content:attr(data-sec) " · "}
 .totop{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:15;width:46px;height:46px;border-radius:50%;
   border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:none;place-items:center;cursor:pointer;color:var(--text)}
 .totop.show{display:grid}
+/* password gate */
+html:not(.unlocked) header,html:not(.unlocked) main,html:not(.unlocked) .totop{display:none!important}
+html.unlocked #gate{display:none}
+#gate{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg)}
+.gate-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 22px;box-shadow:var(--shadow);text-align:center}
+.gate-icon{width:56px;height:56px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.gate-icon svg{width:26px;height:26px}
+.gate-card h1{font-size:21px;margin:0 0 4px}
+.gate-card p{margin:0 0 18px;color:var(--muted);font-size:14px}
+.gate-card form{display:none;flex-direction:column;gap:10px}
+html.has-js .gate-card form{display:flex}
+html.has-js .gate-nojs{display:none}
+.gate-card input{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:0 14px;font-size:16px;outline:none;text-align:center;-webkit-appearance:none}
+.gate-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.gate-card button{height:48px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:16px;cursor:pointer}
+.gate-err{min-height:20px;color:#c0392b;font-size:14px;margin:0}
+.gate-card.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 .totop svg{width:20px;height:20px}
 </style>
 </head>
 <body>
+<div id="gate">
+  <div class="gate-card" id="gateCard">
+    <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Posturología clínica</h1>
+    <p>Bilbao 2026 · Introduce la contraseña para acceder</p>
+    <form id="gateForm" autocomplete="off">
+      <input id="gatePw" type="password" placeholder="Contraseña" aria-label="Contraseña" autocomplete="current-password" enterkeyhint="go">
+      <button type="submit">Entrar</button>
+      <p class="gate-err" id="gateErr" role="alert"></p>
+    </form>
+    <p class="gate-nojs">Esta página necesita abrirse en un navegador (Safari o Chrome) para introducir la contraseña.</p>
+  </div>
+</div>
 <input type="radio" name="tab" id="t-inicio" class="tabr" checked><input type="radio" name="tab" id="t-fund" class="tabr"><input type="radio" name="tab" id="t-rec" class="tabr"><input type="radio" name="tab" id="t-pie" class="tabr"><input type="radio" name="tab" id="t-calz" class="tabr"><input type="radio" name="tab" id="t-estim" class="tabr"><input type="radio" name="tab" id="t-diag" class="tabr"><input type="radio" name="tab" id="t-plant" class="tabr"><input type="radio" name="tab" id="t-casos" class="tabr"><input type="radio" name="tab" id="t-test" class="tabr">
 <header>
   <div class="wrap bar">
@@ -221,6 +252,25 @@ body.searching .card .num::before{content:attr(data-sec) " · "}
 (function () {
   var doc = document.documentElement;
   doc.classList.add('has-js');
+  /* ---- simple password gate ---- */
+  var PW_HASH = 'b2aec0fe';
+  var djb2 = function (str) { var x = 5381; for (var i = 0; i < str.length; i++) x = ((x << 5) + x + str.charCodeAt(i)) >>> 0; return x.toString(16); };
+  var unlocked = false;
+  try { unlocked = localStorage.getItem('postu26:ok') === PW_HASH; } catch (e) {}
+  if (unlocked) doc.classList.add('unlocked');
+  else setTimeout(function () { var i = document.getElementById('gatePw'); if (i) i.focus(); }, 50);
+  document.getElementById('gateForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var input = document.getElementById('gatePw'), card = document.getElementById('gateCard');
+    if (djb2(input.value) === PW_HASH) {
+      try { localStorage.setItem('postu26:ok', PW_HASH); } catch (x) {}
+      doc.classList.add('unlocked'); input.value = ''; window.scrollTo(0, 0);
+    } else {
+      document.getElementById('gateErr').textContent = 'Contraseña incorrecta';
+      card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+      input.select();
+    }
+  });
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var store = {
